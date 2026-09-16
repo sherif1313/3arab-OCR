@@ -33,7 +33,5 @@ Future integration with PaddleOCR layout detection to improve page structure und
 Future support for layout-aware training using text regions and bounding boxes.
 Continued focus on handwritten and manuscript OCR, where the primary objective is accurate transcription rather than exact visual layout reconstruction.
 
-
-##################################
-Planned Improvements
+# Planned Improvements
 In the next version, I plan to integrate PaddleOCR-based layout detection with the model and train on layout-aware data containing text regions and bounding boxes. The goal is to improve both Arabic OCR accuracy and document layout preservation, including paragraphs, headings, lists, tables, and other page structures.
