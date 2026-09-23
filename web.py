@@ -36,7 +36,7 @@ import spaces
 # Per ZeroGPU docs: place model on cuda at module level.
 # ZeroGPU emulation mode lets .cuda() work at startup without a real GPU.
 # ──────────────────────────────────────────────────────────────────────────────
-MODEL_NAME = "/home/sheriff/ArabOCR/output/new5"
+MODEL_NAME = "sherif1313/3arab-OCR-v1"
 
 print("Loading tokenizer...")
 tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME, trust_remote_code=True)
