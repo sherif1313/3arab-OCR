@@ -1,0 +1,716 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>3arab OCR – Baidu</title>
+  <meta name="description" content="3arab OCR: One-shot long-horizon document parsing powered by Baidu's vision-language model." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg-deep:      #0a0c10;
+      --bg-panel:     #0f1117;
+      --bg-surface:   #161b22;
+      --bg-card:      #1c2230;
+      --bg-hover:     #21283a;
+      --border:       #2a3347;
+      --border-soft:  #1e2635;
+      --accent:       #ff6b35;
+      --accent-glow:  rgba(255,107,53,0.25);
+      --teal:         #00d4aa;
+      --teal-dim:     #008f73;
+      --teal-glow:    rgba(0,212,170,0.2);
+      --blue:         #4a9eff;
+      --red:          #ef4444;
+      --text-primary: #e8eaf0;
+      --text-secondary:#8892a4;
+      --text-muted:   #4a5568;
+      --font-mono:    'JetBrains Mono', monospace;
+      --font-ui:      'Inter', sans-serif;
+      --radius:       8px;
+      --radius-lg:    12px;
+    }
+
+    html, body { height: 100%; background: var(--bg-deep); color: var(--text-primary); font-family: var(--font-ui); overflow: hidden; }
+
+    .app { display: flex; flex-direction: column; height: 100vh; }
+
+    /* ── Header ── */
+    header {
+      background: var(--bg-panel);
+      border-bottom: 1px solid var(--border);
+      padding: 0 20px;
+      height: 52px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      flex-shrink: 0;
+    }
+
+    .logo-area { display: flex; align-items: center; gap: 10px; }
+    .logo-icon {
+      width: 28px; height: 28px;
+      background: linear-gradient(135deg, var(--accent) 0%, #ff9f5a 100%);
+      border-radius: 6px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 14px;
+      box-shadow: 0 0 12px var(--accent-glow);
+    }
+    .logo-text { font-size: 14px; font-weight: 600; letter-spacing: 0.01em; }
+    .logo-text span { color: var(--accent); }
+    .header-sep { width: 1px; height: 24px; background: var(--border); }
+
+    .mode-group {
+      display: flex; gap: 4px;
+      background: var(--bg-deep);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 3px;
+    }
+    .mode-btn {
+      padding: 4px 14px;
+      border-radius: 5px;
+      font-family: var(--font-mono);
+      font-size: 11px; font-weight: 500;
+      cursor: pointer; border: none;
+      transition: all 0.18s ease;
+      color: var(--text-secondary);
+      background: transparent;
+      letter-spacing: 0.04em;
+    }
+    .mode-btn.active { background: var(--bg-surface); color: var(--text-primary); box-shadow: 0 1px 6px rgba(0,0,0,0.4); }
+    .mode-btn:hover:not(.active) { color: var(--text-primary); }
+
+    .ngram-group { display: flex; align-items: center; gap: 8px; }
+    .ngram-label { font-family: var(--font-mono); font-size: 10px; color: var(--text-muted); letter-spacing: 0.06em; }
+    .toggle-wrap { position: relative; width: 36px; height: 20px; }
+    .toggle-wrap input { display: none; }
+    .toggle-track { position: absolute; inset: 0; background: var(--border); border-radius: 10px; cursor: pointer; transition: background 0.2s; }
+    .toggle-track::after { content: ''; position: absolute; top: 3px; left: 3px; width: 14px; height: 14px; background: var(--text-secondary); border-radius: 50%; transition: transform 0.2s, background 0.2s; }
+    .toggle-wrap input:checked + .toggle-track { background: var(--teal-dim); }
+    .toggle-wrap input:checked + .toggle-track::after { transform: translateX(16px); background: var(--teal); }
+
+    .header-actions { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+
+    .btn { display: flex; align-items: center; gap: 6px; padding: 6px 16px; border-radius: var(--radius); font-family: var(--font-mono); font-size: 11px; font-weight: 600; letter-spacing: 0.06em; cursor: pointer; border: none; transition: all 0.18s ease; }
+    .btn-start { background: var(--teal); color: #000; box-shadow: 0 0 14px var(--teal-glow); }
+    .btn-start:hover:not(:disabled) { background: #00eebc; box-shadow: 0 0 22px var(--teal-glow); transform: translateY(-1px); }
+    .btn-start:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+    .btn-stop { background: var(--red); color: #fff; box-shadow: 0 0 12px rgba(239,68,68,0.3); }
+    .btn-stop:hover:not(:disabled) { background: #f87171; transform: translateY(-1px); }
+    .btn-stop:disabled { opacity: 0.35; cursor: not-allowed; transform: none; }
+    .btn-clear { background: var(--bg-surface); color: var(--text-secondary); border: 1px solid var(--border); }
+    .btn-clear:hover { color: var(--text-primary); border-color: var(--text-muted); }
+    .btn-copy  { background: var(--bg-surface); color: var(--text-secondary); border: 1px solid var(--border); }
+    .btn-copy:hover { color: var(--blue); border-color: var(--blue); }
+
+    /* ── Status bar ── */
+    .status-bar {
+      background: var(--bg-panel);
+      border-bottom: 1px solid var(--border-soft);
+      padding: 0 20px; height: 28px;
+      display: flex; align-items: center; gap: 12px;
+      flex-shrink: 0;
+    }
+    .status-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--text-muted); transition: background 0.3s; }
+    .status-dot.idle    { background: var(--text-muted); }
+    .status-dot.running { background: var(--teal); animation: pulse 1.2s infinite; }
+    .status-dot.done    { background: var(--teal); }
+    .status-dot.error   { background: var(--red); }
+    @keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.5; } }
+
+    .status-text { font-family: var(--font-mono); font-size: 10px; color: var(--text-muted); letter-spacing: 0.05em; }
+    .status-meta { margin-left: auto; display: flex; gap: 16px; }
+    .meta-chip { font-family: var(--font-mono); font-size: 10px; color: var(--text-muted); }
+    .meta-chip span { color: var(--text-secondary); }
+
+    /* ── Progress bar ── */
+    .progress-bar-wrap { height: 2px; background: var(--bg-deep); flex-shrink: 0; overflow: hidden; }
+    .progress-bar { height: 100%; background: linear-gradient(90deg, var(--teal) 0%, var(--blue) 100%); width: 0%; transition: width 0.3s ease; }
+    .progress-bar.indeterminate { width: 40%; animation: slide 1.4s ease-in-out infinite; }
+    @keyframes slide { 0% { transform: translateX(-100%); } 100% { transform: translateX(350%); } }
+
+    /* ── Panels ── */
+    .panels { flex: 1; display: grid; grid-template-columns: 1fr 1fr; overflow: hidden; }
+    .panel  { display: flex; flex-direction: column; overflow: hidden; }
+    .panel-left { border-right: 1px solid var(--border); }
+
+    .panel-header {
+      background: var(--bg-surface);
+      border-bottom: 1px solid var(--border-soft);
+      padding: 8px 16px;
+      display: flex; align-items: center; gap: 10px;
+      flex-shrink: 0;
+    }
+    .panel-label { font-family: var(--font-mono); font-size: 10px; font-weight: 600; letter-spacing: 0.08em; color: var(--text-muted); }
+    .panel-tag { font-family: var(--font-mono); font-size: 9px; padding: 2px 7px; border-radius: 3px; background: var(--bg-deep); border: 1px solid var(--border); color: var(--text-muted); }
+    .panel-tag.active { border-color: var(--accent); color: var(--accent); background: rgba(255,107,53,0.08); }
+    .panel-actions { margin-left: auto; display: flex; gap: 6px; }
+    .icon-btn { width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; border-radius: 4px; background: transparent; border: 1px solid transparent; cursor: pointer; color: var(--text-muted); font-size: 12px; transition: all 0.15s; }
+    .icon-btn:hover { background: var(--bg-hover); color: var(--text-primary); border-color: var(--border); }
+
+    /* ── Drop zone ── */
+    .drop-zone {
+      flex: 1;
+      display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px;
+      padding: 32px;
+      border: 2px dashed var(--border);
+      margin: 16px; border-radius: var(--radius-lg);
+      cursor: pointer; transition: all 0.2s; text-align: center;
+    }
+    .drop-zone.dragging { border-color: var(--accent); background: rgba(255,107,53,0.04); }
+    .drop-icon { font-size: 40px; opacity: 0.3; filter: grayscale(1); }
+    .drop-title { font-size: 14px; font-weight: 500; color: var(--text-secondary); }
+    .drop-hint  { font-size: 11px; color: var(--text-muted); font-family: var(--font-mono); }
+    .drop-formats { display: flex; gap: 6px; }
+    .format-chip { font-family: var(--font-mono); font-size: 9px; padding: 2px 8px; border-radius: 3px; background: var(--bg-deep); border: 1px solid var(--border); color: var(--text-muted); }
+
+    #image-preview { width: 100%; height: 100%; object-fit: contain; background: #000; display: none; }
+    #image-preview.visible { display: block; }
+
+    /* PDF.js canvas viewer */
+    #pdf-canvas-wrap {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+      overflow-y: auto;
+      padding: 12px;
+      height: 100%;
+      background: #525659;
+    }
+    #pdf-canvas-wrap.visible { display: flex; }
+    #pdf-canvas-wrap canvas {
+      display: block;
+      width: 100%;
+      max-width: 680px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.6);
+      border-radius: 2px;
+    }
+
+    /* ── Output ── */
+    .output-area {
+      flex: 1; overflow-y: auto;
+      padding: 16px 20px;
+      font-family: var(--font-mono); font-size: 12px; line-height: 1.7;
+      color: var(--text-primary); position: relative;
+    }
+    .output-area::-webkit-scrollbar { width: 6px; }
+    .output-area::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+    .output-placeholder { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; color: var(--text-muted); }
+    .output-placeholder svg { opacity: 0.2; }
+    .output-placeholder p { font-size: 12px; font-family: var(--font-mono); }
+
+    #ocr-text { white-space: pre-wrap; word-break: break-word; }
+
+    .cursor { display: inline-block; width: 8px; height: 14px; background: var(--teal); vertical-align: middle; margin-left: 2px; border-radius: 1px; animation: blink 0.8s step-end infinite; }
+    @keyframes blink { 0%,100% { opacity:1; } 50% { opacity:0; } }
+
+    /* ── Prompt bar ── */
+    .prompt-bar { background: var(--bg-surface); border-top: 1px solid var(--border-soft); padding: 8px 16px; display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+    .prompt-label { font-family: var(--font-mono); font-size: 10px; color: var(--text-muted); white-space: nowrap; }
+    .prompt-input { flex: 1; background: var(--bg-deep); border: 1px solid var(--border); border-radius: 5px; padding: 4px 10px; font-family: var(--font-mono); font-size: 11px; color: var(--text-primary); outline: none; transition: border-color 0.2s; }
+    .prompt-input:focus { border-color: var(--accent); }
+
+    .token-counter { font-family: var(--font-mono); font-size: 10px; color: var(--teal); margin-left: auto; }
+
+    /* ── Toast ── */
+    .toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%) translateY(60px); background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); padding: 8px 20px; font-family: var(--font-mono); font-size: 11px; color: var(--text-primary); opacity: 0; transition: all 0.3s ease; z-index: 100; white-space: nowrap; }
+    .toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+
+    * { scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
+  </style>
+</head>
+<body>
+<div class="app">
+
+  <!-- Header -->
+  <header>
+    <div class="logo-area">
+      <div class="logo-icon">📄</div>
+      <span class="logo-text">3arab<span>-OCR</span></span>
+    </div>
+    <div class="header-sep"></div>
+
+    <div class="mode-group" role="group" aria-label="Inference mode">
+      <button class="mode-btn active" id="btn-long" onclick="setMode('long')">Long</button>
+      <button class="mode-btn"        id="btn-base" onclick="setMode('base')">Base</button>
+    </div>
+    <div class="header-sep"></div>
+    <div class="ngram-group">
+      <span class="ngram-label">NGRAM</span>
+      <label class="toggle-wrap">
+        <input type="checkbox" id="ngram-toggle" checked />
+        <div class="toggle-track"></div>
+      </label>
+    </div>
+
+    <div class="header-actions">
+      <button class="btn btn-clear" onclick="clearAll()">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.51"/></svg>
+        RESET
+      </button>
+      <button class="btn btn-copy" id="copy-btn" onclick="copyText()" disabled>
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+        COPY
+      </button>
+      <button class="btn btn-start" id="start-btn" onclick="startOCR()" disabled>
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+        START
+      </button>
+      <button class="btn btn-stop" id="stop-btn" onclick="stopOCR()" disabled>
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12"/></svg>
+        STOP
+      </button>
+    </div>
+  </header>
+
+  <!-- Status bar -->
+  <div class="status-bar">
+    <div class="status-dot idle" id="status-dot"></div>
+    <span class="status-text" id="status-text">IDLE · drop or click to load a document</span>
+    <div class="status-meta">
+      <span class="meta-chip">MODEL <span>sherif1313/3arab-OCR-v1</span></span>
+      <span class="meta-chip">MODE <span id="mode-display">LONG</span></span>
+      <span class="meta-chip" id="page-info" style="display:none">PAGES <span id="page-count">1</span></span>
+      <span class="meta-chip token-counter" id="token-display" style="display:none"><span id="char-count">0</span> chars</span>
+    </div>
+  </div>
+
+  <!-- Progress bar -->
+  <div class="progress-bar-wrap">
+    <div class="progress-bar" id="progress-bar"></div>
+  </div>
+
+  <!-- Panels -->
+  <div class="panels">
+
+    <!-- Left: input -->
+    <div class="panel panel-left">
+      <div class="panel-header">
+        <span class="panel-label">INPUT</span>
+        <span class="panel-tag active" id="input-type-tag">EMPTY</span>
+        <div class="panel-actions">
+          <button class="icon-btn" title="Upload file" onclick="document.getElementById('file-input').click()">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          </button>
+          <button class="icon-btn" title="Toggle zoom" id="zoom-btn" onclick="toggleZoom()" style="display:none">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>
+          </button>
+        </div>
+      </div>
+
+      <div class="drop-zone" id="drop-zone"
+           onclick="document.getElementById('file-input').click()"
+           ondragover="onDragOver(event)"
+           ondragleave="onDragLeave(event)"
+           ondrop="onDrop(event)">
+        <div class="drop-icon">📄</div>
+        <div class="drop-title">Drop your document here</div>
+        <p class="drop-hint">or click anywhere to browse</p>
+        <div class="drop-formats">
+          <span class="format-chip">PNG</span>
+          <span class="format-chip">JPG</span>
+          <span class="format-chip">WEBP</span>
+          <span class="format-chip">PDF</span>
+          <span class="format-chip">TIFF</span>
+        </div>
+      </div>
+
+      <img id="image-preview" alt="Document preview" />
+      <div id="pdf-canvas-wrap"></div>
+
+      <div class="prompt-bar">
+        <span class="prompt-label">PROMPT</span>
+        <input class="prompt-input" id="prompt-input" value="document parsing." placeholder="e.g. document parsing." />
+      </div>
+    </div>
+
+    <!-- Right: output -->
+    <div class="panel">
+      <div class="panel-header">
+        <span class="panel-label">OCR OUTPUT</span>
+        <span class="panel-tag" id="output-tag">WAITING</span>
+        <div class="panel-actions" style="margin-left:auto">
+          <button class="icon-btn" title="Scroll to top" onclick="scrollOutputTop()">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="17 11 12 6 7 11"/><polyline points="17 18 12 13 7 18"/></svg>
+          </button>
+          <button class="icon-btn" title="Scroll to bottom" onclick="scrollOutputBottom()">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="7 13 12 18 17 13"/><polyline points="7 6 12 11 17 6"/></svg>
+          </button>
+        </div>
+      </div>
+      <div class="output-area" id="output-area">
+        <div class="output-placeholder" id="output-placeholder">
+          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="3" y1="15" x2="21" y2="15"/><line x1="9" y1="9" x2="9" y2="21"/></svg>
+          <p>OCR output will appear here</p>
+          <p style="color:var(--border);font-size:10px">Load a document and press START</p>
+        </div>
+        <div id="ocr-text"></div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<input type="file" id="file-input" style="display:none" accept="image/*,.pdf" onchange="handleFileInput(event)" />
+<div class="toast" id="toast"></div>
+
+<script type="module">
+import { Client, handle_file } from "https://cdn.jsdelivr.net/npm/@gradio/client/dist/index.min.js";
+import * as pdfjsLib from "https://cdn.jsdelivr.net/npm/pdfjs-dist@4.4.168/build/pdf.min.mjs";
+pdfjsLib.GlobalWorkerOptions.workerSrc =
+  "https://cdn.jsdelivr.net/npm/pdfjs-dist@4.4.168/build/pdf.worker.min.mjs";
+
+// ── State ─────────────────────────────────────────────────────────────────────
+let client        = null;
+let currentMode   = 'long';
+let currentFile   = null;
+let isPDF         = false;
+let isRunning     = false;
+let stopRequested = false;
+let charCount     = 0;
+let zoomedOut     = false;
+
+// ── Boot ──────────────────────────────────────────────────────────────────────
+async function boot() {
+  try {
+    client = await Client.connect(window.location.origin);
+    setStatus('idle', 'READY · model loaded');
+  } catch (e) {
+    setStatus('error', 'CONNECTION ERROR · ' + e.message);
+  }
+}
+boot();
+
+// ── Global handlers (called from onclick="…") ─────────────────────────────────
+window.setMode = (m) => {
+  currentMode = m;
+  document.getElementById('btn-long').classList.toggle('active', m === 'long');
+  document.getElementById('btn-base').classList.toggle('active', m === 'base');
+  document.getElementById('mode-display').textContent = m.toUpperCase();
+};
+
+window.handleFileInput = (e) => { if (e.target.files[0]) loadFile(e.target.files[0]); };
+
+window.onDragOver = (e) => {
+  e.preventDefault();
+  document.getElementById('drop-zone').classList.add('dragging');
+};
+window.onDragLeave = () => {
+  document.getElementById('drop-zone').classList.remove('dragging');
+};
+window.onDrop = (e) => {
+  e.preventDefault();
+  document.getElementById('drop-zone').classList.remove('dragging');
+  if (e.dataTransfer.files[0]) loadFile(e.dataTransfer.files[0]);
+};
+
+window.startOCR = startOCR;
+window.stopOCR  = stopOCR;
+window.clearAll = clearAll;
+window.copyText = copyText;
+window.toggleZoom = () => {
+  zoomedOut = !zoomedOut;
+  document.getElementById('image-preview').style.objectFit = zoomedOut ? 'cover' : 'contain';
+};
+window.scrollOutputTop    = () => { document.getElementById('output-area').scrollTop = 0; };
+window.scrollOutputBottom = () => {
+  const a = document.getElementById('output-area');
+  a.scrollTop = a.scrollHeight;
+};
+
+// ── File loading ──────────────────────────────────────────────────────────────
+async function loadFile(file) {
+  currentFile = file;
+  isPDF = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
+
+  // Hide drop zone, reset previews
+  document.getElementById('drop-zone').style.display = 'none';
+  document.getElementById('image-preview').classList.remove('visible');
+  document.getElementById('pdf-canvas-wrap').classList.remove('visible');
+  document.getElementById('zoom-btn').style.display = 'flex';
+  document.getElementById('input-type-tag').textContent =
+    isPDF ? 'PDF' : file.name.split('.').pop().toUpperCase();
+
+  if (isPDF) {
+    // Render PDF pages with PDF.js into canvases (blob: URLs are blocked in iframes on HTTPS)
+    const wrap = document.getElementById('pdf-canvas-wrap');
+    wrap.innerHTML = '<div style="color:var(--teal);font-family:var(--font-mono);font-size:11px;padding:20px">Rendering PDF…</div>';
+    wrap.classList.add('visible');
+    document.getElementById('page-info').style.display = 'flex';
+
+    const buffer = await file.arrayBuffer();
+    const pdf    = await pdfjsLib.getDocument({ data: buffer }).promise;
+    const total  = pdf.numPages;
+    document.getElementById('page-count').textContent = total;
+    wrap.innerHTML = '';
+
+    for (let i = 1; i <= total; i++) {
+      const page     = await pdf.getPage(i);
+      const viewport = page.getViewport({ scale: 2.0 });
+      const canvas   = document.createElement('canvas');
+      canvas.width   = viewport.width;
+      canvas.height  = viewport.height;
+      await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
+      wrap.appendChild(canvas);
+    }
+  } else {
+    const preview = document.getElementById('image-preview');
+    preview.src = URL.createObjectURL(file);
+    preview.classList.add('visible');
+  }
+
+  setStatus('idle', `READY · ${file.name}`);
+  document.getElementById('start-btn').disabled = false;
+  clearOutput();
+}
+
+// ── OCR entry ─────────────────────────────────────────────────────────────────
+async function startOCR() {
+  if (!currentFile || isRunning) return;
+  if (!client) { showToast('Client not ready yet'); return; }
+
+  isRunning     = true;
+  stopRequested = false;
+  charCount     = 0;
+
+  clearOutput();
+  document.getElementById('output-placeholder').style.display = 'none';
+  document.getElementById('output-tag').textContent  = 'RUNNING';
+  document.getElementById('start-btn').disabled = true;
+  document.getElementById('stop-btn').disabled  = false;
+  setProgressIndeterminate(true);
+
+  const prompt = document.getElementById('prompt-input').value || 'document parsing.';
+  // Long mode → gundam (640px crop, fast, ZeroGPU-friendly)
+  // Base mode → base (1024px, more accurate)
+  const mode   = currentMode === 'long' ? 'gundam' : 'base';
+  const ocrDiv = document.getElementById('ocr-text');
+
+  try {
+    if (isPDF) {
+      await runPDF(ocrDiv, prompt, mode);
+    } else {
+      await runSingleImage(ocrDiv, prompt, mode);
+    }
+  } finally {
+    isRunning = false;
+    setProgressIndeterminate(false);
+    document.getElementById('start-btn').disabled = false;
+    document.getElementById('stop-btn').disabled  = true;
+  }
+}
+
+// ── Single image — streaming via client.submit() ────────────────────────────
+async function runSingleImage(ocrDiv, prompt, mode) {
+  ocrDiv.innerHTML = '<span class="cursor"></span>';
+  setStatus('running', 'IN GPU QUEUE…');
+
+  const submission = client.submit('/run_ocr', {
+    image_path: handle_file(currentFile),
+    mode,
+    prompt,
+  });
+
+  let finalText = '';
+  try {
+    for await (const msg of submission) {
+      if (stopRequested) { submission.cancel(); return finishStop(ocrDiv); }
+      if (msg.type === 'data') {
+        const chunk = msg.data?.[0]?.text ?? msg.data?.[0] ?? '';
+        finalText = chunk;
+        ocrDiv.textContent = chunk;
+        window.scrollOutputBottom();
+      }
+      if (msg.type === 'status' && msg.stage === 'complete') break;
+    }
+    finishDone(finalText);
+  } catch (err) {
+    if (stopRequested) return finishStop(ocrDiv);
+    showError(ocrDiv, err.message);
+  }
+}
+
+// ── PDF: CPU explode → one 60-second GPU slot per page ───────────────────────
+//
+//  ZeroGPU design pattern:
+//   • Short bursts  = higher queue priority
+//   • One page/call = multiple users can be served concurrently
+//   • PDF extraction is CPU-only (no GPU wasted on I/O)
+//
+async function runPDF(ocrDiv, prompt, mode) {
+  setStatus('running', 'EXTRACTING PDF PAGES (CPU)…');
+  ocrDiv.innerHTML = '<span class="cursor"></span>';
+
+  let pages;
+  try {
+    const res = await client.predict('/explode_pdf', {
+      pdf_file: handle_file(currentFile),
+    });
+    pages = res?.data?.[0]?.pages ?? [];
+  } catch (err) {
+    if (stopRequested) return finishStop(ocrDiv);
+    return showError(ocrDiv, 'PDF extraction failed: ' + err.message);
+  }
+
+  if (!pages.length) return showError(ocrDiv, 'No pages found in PDF.');
+
+  const total = pages.length;
+  document.getElementById('page-count').textContent = total;
+  document.getElementById('page-info').style.display = 'flex';
+  ocrDiv.textContent = '';
+
+  let fullText = '';
+
+  for (let i = 0; i < total; i++) {
+    if (stopRequested) return finishStop(ocrDiv);
+
+    setStatus('running', `GPU QUEUE · PAGE ${i + 1} / ${total}`);
+    setProgressValue(Math.round((i / total) * 100));
+
+    // Section header
+    const sep = document.createElement('div');
+    sep.style.cssText =
+      'margin:10px 0 5px;font-size:9px;letter-spacing:.1em;' +
+      'color:var(--text-muted);border-bottom:1px solid var(--border-soft);padding-bottom:3px;';
+    sep.textContent = `── PAGE ${i + 1} / ${total} ──`;
+    ocrDiv.appendChild(sep);
+
+    // Waiting-for-GPU indicator
+    const slot = document.createElement('div');
+    slot.style.cssText = 'color:var(--text-muted);font-size:11px;padding:3px 0;';
+    slot.innerHTML = '<span class="cursor"></span> waiting for GPU slot…';
+    ocrDiv.appendChild(slot);
+    window.scrollOutputBottom();
+
+    // Stream each page token-by-token using client.submit()
+    const pageSub = client.submit('/run_ocr', {
+      image_path: { path: pages[i].path, orig_name: pages[i].orig_name },
+      mode,
+      prompt,
+    });
+    try {
+      let pageText = '';
+      for await (const msg of pageSub) {
+        if (stopRequested) { pageSub.cancel(); slot.remove(); return finishStop(ocrDiv); }
+        if (msg.type === 'data') {
+          pageText = msg.data?.[0]?.text ?? msg.data?.[0] ?? '';
+          slot.style.color = 'var(--text-primary)';
+          slot.innerHTML   = '';
+          slot.textContent = pageText;
+          window.scrollOutputBottom();
+        }
+        if (msg.type === 'status' && msg.stage === 'complete') break;
+      }
+      fullText  += (fullText ? '\n\n' : '') + pageText;
+      charCount  = fullText.length;
+      document.getElementById('char-count').textContent      = charCount.toLocaleString();
+      document.getElementById('token-display').style.display = 'flex';
+      if (!pageText) slot.textContent = '(no text detected)';
+    } catch (err) {
+      if (stopRequested) return finishStop(ocrDiv);
+      slot.innerHTML = `<span style="color:var(--red)">Page ${i + 1} error: ${err.message}</span>`;
+    }
+  }
+
+  finishDone(fullText);
+}
+
+// ── Stop ──────────────────────────────────────────────────────────────────────
+function stopOCR() { stopRequested = true; }
+
+function finishStop(ocrDiv) {
+  ocrDiv.querySelectorAll('.cursor').forEach(c => c.remove());
+  setStatus('idle', 'STOPPED by user');
+  document.getElementById('output-tag').textContent = 'STOPPED';
+  setProgressIndeterminate(false);
+  isRunning = false;
+  document.getElementById('start-btn').disabled = false;
+  document.getElementById('stop-btn').disabled  = true;
+}
+
+// ── Done / error ──────────────────────────────────────────────────────────────
+function finishDone(text) {
+  charCount = text.length;
+  setProgressValue(100);
+  setStatus('done', `DONE · ${charCount.toLocaleString()} chars`);
+  document.getElementById('output-tag').textContent       = 'DONE';
+  document.getElementById('token-display').style.display  = 'flex';
+  document.getElementById('char-count').textContent       = charCount.toLocaleString();
+  document.getElementById('copy-btn').disabled            = false;
+  showToast('OCR complete');
+}
+
+function showError(ocrDiv, msg) {
+  ocrDiv.innerHTML = `<span style="color:var(--red)">ERROR: ${msg}</span>`;
+  setStatus('error', 'ERROR · ' + msg);
+  document.getElementById('output-tag').textContent = 'ERROR';
+}
+
+// ── Utilities ─────────────────────────────────────────────────────────────────
+function clearOutput() {
+  document.getElementById('ocr-text').innerHTML           = '';
+  charCount = 0;
+  document.getElementById('output-placeholder').style.display = 'flex';
+  document.getElementById('output-tag').textContent       = 'WAITING';
+  document.getElementById('token-display').style.display  = 'none';
+  document.getElementById('copy-btn').disabled            = true;
+  setProgressValue(0);
+}
+
+function clearAll() {
+  if (isRunning) stopOCR();
+  currentFile = null; isPDF = false;
+  document.getElementById('drop-zone').style.display      = '';
+  const p = document.getElementById('image-preview');
+  p.classList.remove('visible'); p.src = '';
+  const v = document.getElementById('pdf-canvas-wrap');
+  v.classList.remove('visible'); v.innerHTML = '';
+  document.getElementById('zoom-btn').style.display       = 'none';
+  document.getElementById('input-type-tag').textContent   = 'EMPTY';
+  document.getElementById('start-btn').disabled           = true;
+  document.getElementById('page-info').style.display      = 'none';
+  document.getElementById('file-input').value             = '';
+  clearOutput();
+  setStatus('idle', 'IDLE · drop or click to load a document');
+}
+
+function copyText() {
+  navigator.clipboard.writeText(document.getElementById('ocr-text').innerText)
+    .then(() => showToast('Copied to clipboard'));
+}
+
+function setStatus(type, msg) {
+  document.getElementById('status-dot').className    = 'status-dot ' + type;
+  document.getElementById('status-text').textContent = msg;
+}
+
+function setProgressIndeterminate(on) {
+  const bar = document.getElementById('progress-bar');
+  bar.className = 'progress-bar' + (on ? ' indeterminate' : '');
+  if (!on) bar.style.width = '0%';
+}
+
+function setProgressValue(v) {
+  const bar = document.getElementById('progress-bar');
+  bar.className = 'progress-bar';
+  bar.style.width = v + '%';
+}
+
+let _toastTimer = null;
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(_toastTimer);
+  _toastTimer = setTimeout(() => t.classList.remove('show'), 2600);
+}
+</script>
+</body>
+</html>

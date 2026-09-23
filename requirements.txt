@@ -1,0 +1,31 @@
+# ============================================================
+# 3arabOCR-v1 — بيئة التشغيل (Inference)
+# Python >= 3.10 (مُختبر على 3.12)
+# GPU: CUDA-capable, >= 16 GB VRAM موصى بها
+# ============================================================
+
+# ── PyTorch (ثبّته من pip العادي أو من فهرس CUDA حسب جهازك) ──
+# للـ CUDA 12.x (مطابق لبيئة التدريب الأصلية):
+#   pip install torch --index-url https://download.pytorch.org/whl/cu128
+torch>=2.6
+
+# ── Transformers stack ──
+transformers>=4.57.1
+tokenizers>=0.20
+safetensors>=0.4
+huggingface_hub>=0.24
+
+# ── معالجة الصور والمدخلات ──
+pillow>=10.0
+numpy>=1.26
+
+# ── مساعدات الاستدلال ──
+einops>=0.7
+tqdm>=4.66
+sentencepiece>=0.1.99
+protobuf>=4.25
+
+gradio
+# ── اختياري (يحسّن سرعة التوليد إن كان متوفراً) ──
+# accelerate>=1.0        # device_map="auto" للتوزيع التلقائي
+# flash-attn>=2.5        # إن كان GPU يدعمه (Ampere+)
