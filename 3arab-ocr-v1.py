@@ -4,7 +4,7 @@ import fitz
 import torch
 from transformers import AutoModel, AutoTokenizer
 
-MODEL_NAME = "/home/sheriff/ArabOCR/output/new5-4bit"
+MODEL_NAME = "sherif1313/3arab-OCR-v1"
 PDF_PATH = "1.pdf"
 OUTPUT_DIR = "./3/output"
 DPI = 200
